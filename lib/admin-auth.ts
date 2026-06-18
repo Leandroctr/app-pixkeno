@@ -46,6 +46,11 @@ export async function createAdminSession() {
   return true;
 }
 
+export async function clearAdminSession() {
+  const cookieStore = await cookies();
+  cookieStore.delete(adminCookieName);
+}
+
 export async function isAdminAuthenticated() {
   const token = getAdminToken();
 

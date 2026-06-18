@@ -25,6 +25,19 @@ create table if not exists public.push_campaigns (
   created_at timestamptz not null default now()
 );
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'push_campaigns_status_check'
+  ) then
+    alter table public.push_campaigns
+      add constraint push_campaigns_status_check
+      check (status in ('created', 'sent', 'failed', 'draft'));
+  end if;
+end $$;
+
 alter table public.push_subscriptions enable row level security;
 alter table public.push_campaigns enable row level security;
 

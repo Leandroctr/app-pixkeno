@@ -32,6 +32,12 @@ export type OneSignalInitResult = {
   message: string;
 };
 
+function debugLog(message: string, details?: unknown) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(`[OneSignal] ${message}`, details ?? "");
+  }
+}
+
 function loadOneSignalSdk() {
   return new Promise<void>((resolve, reject) => {
     if (document.querySelector("[data-onesignal-sdk]")) {
@@ -54,6 +60,7 @@ async function sendSubscription(oneSignal: OneSignalInstance, permissionStatus: 
   const onesignalId = oneSignal.User.PushSubscription.id;
 
   if (!onesignalId) {
+    debugLog("Subscription id ainda indisponivel.");
     return false;
   }
 
@@ -70,11 +77,16 @@ async function sendSubscription(oneSignal: OneSignalInstance, permissionStatus: 
     }),
   });
 
+  if (!response.ok) {
+    debugLog("Falha ao salvar inscricao push.", await response.json().catch(() => null));
+  }
+
   return response.ok;
 }
 
 export async function initializeOneSignal(): Promise<OneSignalInitResult> {
   if (!appConfig.oneSignalAppId) {
+    debugLog("NEXT_PUBLIC_ONESIGNAL_APP_ID vazio; push desativado.");
     return {
       enabled: false,
       subscribed: false,
@@ -92,6 +104,7 @@ export async function initializeOneSignal(): Promise<OneSignalInitResult> {
 
   try {
     await loadOneSignalSdk();
+    debugLog("SDK carregado.");
 
     return await new Promise((resolve) => {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -101,11 +114,13 @@ export async function initializeOneSignal(): Promise<OneSignalInitResult> {
             appId: appConfig.oneSignalAppId,
             serviceWorkerPath: "/sw.js",
           });
+          debugLog("SDK inicializado.");
 
           const permissionGranted =
             oneSignal.Notifications.permission ||
             (await oneSignal.Notifications.requestPermission());
           const permissionStatus = permissionGranted ? "granted" : Notification.permission;
+          debugLog("Status de permissao recebido.", permissionStatus);
 
           oneSignal.User.PushSubscription.addEventListener?.("change", (event) => {
             if (event.current?.id) {
@@ -123,6 +138,7 @@ export async function initializeOneSignal(): Promise<OneSignalInitResult> {
               : "Permissao recebida, aguardando identificador do dispositivo.",
           });
         } catch {
+          debugLog("Erro ao inicializar push.");
           resolve({
             enabled: true,
             subscribed: false,
@@ -132,6 +148,7 @@ export async function initializeOneSignal(): Promise<OneSignalInitResult> {
       });
     });
   } catch {
+    debugLog("Erro ao carregar SDK.");
     return {
       enabled: true,
       subscribed: false,

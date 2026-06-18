@@ -31,6 +31,34 @@ npm run build
 npm run lint
 ```
 
+## Status atual
+
+Implementado:
+
+- Projeto Next.js com TypeScript, App Router, Tailwind CSS e ESLint.
+- Arquitetura white-label/multi-site centralizada em `lib/app-config.ts`.
+- Home mobile-first consumindo configuracoes por variaveis de ambiente.
+- Manifest dinamico em `app/manifest.ts`.
+- Service worker em `public/sw.js`.
+- Integracao inicial Supabase client/server.
+- Schema Supabase com `push_subscriptions` e `push_campaigns`.
+- Inicializacao OneSignal no front-end sem expor chave REST.
+- API `/api/push/subscribe` para salvar inscricoes push.
+- API `/api/push/send` para envio server-side via OneSignal.
+- Painel admin MVP em `/admin`.
+- Login admin MVP em `/admin/login`.
+- Formulario para envio de push teste ou para todos.
+- Historico basico de campanhas.
+
+Ainda nao implementado:
+
+- Supabase Auth.
+- Segmentacao avancada.
+- CRM.
+- Campanhas automaticas.
+- Dashboard complexo.
+- Login de usuario final.
+
 ## Ambiente
 
 Copie `.env.example` para `.env.local` e preencha:
@@ -127,6 +155,26 @@ O envio real passa por `/api/push/send`.
 
 Em desenvolvimento local, push web pode depender de suporte do navegador,
 HTTPS ou regras do proprio OneSignal para localhost.
+
+## Checklist de deploy
+
+Antes de publicar:
+
+1. Criar projeto Supabase.
+2. Rodar `supabase/schema.sql`.
+3. Criar app Web Push no OneSignal.
+4. Configurar dominio HTTPS no OneSignal.
+5. Configurar variaveis de ambiente na Vercel.
+6. Fazer deploy.
+7. Testar `/manifest.webmanifest`.
+8. Testar instalacao Android.
+9. Testar permissao push.
+10. Testar inscricao em `push_subscriptions`.
+11. Testar login em `/admin/login`.
+12. Testar envio pelo painel admin.
+13. Conferir historico em `push_campaigns`.
+
+Veja o passo a passo completo em `DEPLOY_CHECKLIST.md`.
 
 ## Admin MVP
 

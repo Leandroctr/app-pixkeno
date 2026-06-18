@@ -10,11 +10,29 @@ type SendPayload = {
   targetType?: string;
 };
 
+function isSafeUrl(value: string) {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 function normalizePayload(payload: SendPayload) {
+  const fallbackTargetUrl = isSafeUrl(appConfig.platformUrl)
+    ? appConfig.platformUrl
+    : appConfig.publicUrl || "/";
+  const targetUrl = payload.targetUrl?.trim() || fallbackTargetUrl;
+
   return {
-    title: payload.title?.trim() || "",
-    message: payload.message?.trim() || "",
-    targetUrl: payload.targetUrl?.trim() || appConfig.platformUrl,
+    title: payload.title?.trim().slice(0, 120) || "",
+    message: payload.message?.trim().slice(0, 500) || "",
+    targetUrl: isSafeUrl(targetUrl) || targetUrl.startsWith("/") ? targetUrl : fallbackTargetUrl,
     targetType: payload.targetType === "test" ? "test" : "all",
   };
 }
@@ -74,11 +92,32 @@ export async function POST(request: Request) {
 
   const subscriptionIds =
     subscriptions?.map((item) => item.onesignal_id).filter(Boolean) || [];
+  const targetCount = subscriptionIds.length;
 
-  if (subscriptionIds.length === 0) {
+  if (targetCount === 0) {
     return NextResponse.json(
-      { ok: false, error: "Nenhum inscrito disponivel para envio." },
+      { ok: false, error: "Nenhum inscrito disponivel para envio.", targetCount },
       { status: 400 },
+    );
+  }
+
+  const { data: campaign, error: createCampaignError } = await supabase
+    .from("push_campaigns")
+    .insert({
+      title: data.title,
+      message: data.message,
+      target_url: data.targetUrl,
+      target_type: data.targetType,
+      status: "created",
+      recipient_count: targetCount,
+    })
+    .select("id")
+    .single();
+
+  if (createCampaignError || !campaign) {
+    return NextResponse.json(
+      { ok: false, error: "Nao foi possivel registrar campanha." },
+      { status: 500 },
     );
   }
 
@@ -101,21 +140,24 @@ export async function POST(request: Request) {
   const notificationId =
     typeof oneSignalResult.id === "string" ? oneSignalResult.id : null;
 
-  const { error: campaignError } = await supabase.from("push_campaigns").insert({
-    title: data.title,
-    message: data.message,
-    target_url: data.targetUrl,
-    target_type: data.targetType,
+  const { error: campaignError } = await supabase
+    .from("push_campaigns")
+    .update({
     status: oneSignalResponse.ok ? "sent" : "failed",
     onesignal_notification_id: notificationId,
-    recipient_count: subscriptionIds.length,
     error_message: oneSignalResponse.ok ? null : JSON.stringify(oneSignalResult),
     sent_at: oneSignalResponse.ok ? new Date().toISOString() : null,
-  });
+    })
+    .eq("id", campaign.id);
 
   if (!oneSignalResponse.ok) {
     return NextResponse.json(
-      { ok: false, error: "OneSignal recusou o envio.", details: oneSignalResult },
+      {
+        ok: false,
+        error: "OneSignal recusou o envio.",
+        targetCount,
+        campaignId: campaign.id,
+      },
       { status: 502 },
     );
   }
@@ -130,6 +172,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     notificationId,
-    recipients: subscriptionIds.length,
+    targetCount,
+    recipients: targetCount,
+    campaignId: campaign.id,
   });
 }

@@ -8,6 +8,12 @@ type SendStatus = {
   message: string;
 };
 
+type SendResult = {
+  error?: string;
+  recipients?: number;
+  targetCount?: number;
+};
+
 export function AdminPushForm() {
   const [status, setStatus] = useState<SendStatus>({
     type: "idle",
@@ -16,31 +22,54 @@ export function AdminPushForm() {
   const [isSending, setIsSending] = useState(false);
 
   async function sendPush(formData: FormData, targetType: "test" | "all") {
+    const title = String(formData.get("title") || "").trim();
+    const message = String(formData.get("message") || "").trim();
+    const targetUrl = String(formData.get("targetUrl") || "").trim();
+
+    if (!title || !message) {
+      setStatus({
+        type: "error",
+        message: "Preencha titulo e mensagem antes de enviar.",
+      });
+      return;
+    }
+
     setIsSending(true);
     setStatus({ type: "idle", message: "" });
 
-    const response = await fetch("/api/push/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title: formData.get("title"),
-        message: formData.get("message"),
-        targetUrl: formData.get("targetUrl"),
-        targetType,
-      }),
-    });
+    try {
+      const response = await fetch("/api/push/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          message,
+          targetUrl,
+          targetType,
+        }),
+      });
 
-    const result = await response.json().catch(() => null);
+      const result = (await response.json().catch(() => null)) as SendResult | null;
+      const recipientCount = result?.recipients || result?.targetCount || 0;
 
-    setIsSending(false);
-    setStatus({
-      type: response.ok ? "success" : "error",
-      message:
-        result?.error ||
-        (response.ok ? "Push enviado com sucesso." : "Falha ao enviar push."),
-    });
+      setStatus({
+        type: response.ok ? "success" : "error",
+        message:
+          result?.error ||
+          (response.ok
+            ? `Push enviado para ${recipientCount} inscrito(s).`
+            : "Falha ao enviar push."),
+      });
+    } catch {
+      setStatus({
+        type: "error",
+        message: "Nao foi possivel conectar com a API de envio.",
+      });
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
@@ -49,6 +78,7 @@ export function AdminPushForm() {
         Titulo
         <input
           className="min-h-12 rounded-lg border border-slate-200 bg-white px-3 text-base font-normal text-slate-950 outline-none focus:border-slate-400"
+          disabled={isSending}
           name="title"
           required
         />
@@ -58,6 +88,7 @@ export function AdminPushForm() {
         Mensagem
         <textarea
           className="min-h-28 rounded-lg border border-slate-200 bg-white px-3 py-3 text-base font-normal text-slate-950 outline-none focus:border-slate-400"
+          disabled={isSending}
           name="message"
           required
         />
@@ -68,6 +99,7 @@ export function AdminPushForm() {
         <input
           className="min-h-12 rounded-lg border border-slate-200 bg-white px-3 text-base font-normal text-slate-950 outline-none focus:border-slate-400"
           defaultValue={appConfig.platformUrl === "#" ? "" : appConfig.platformUrl}
+          disabled={isSending}
           name="targetUrl"
           type="url"
         />
@@ -80,7 +112,7 @@ export function AdminPushForm() {
           formAction={(formData) => void sendPush(formData, "test")}
           type="submit"
         >
-          Enviar teste
+          {isSending ? "Enviando..." : "Enviar teste"}
         </button>
         <button
           className="min-h-12 rounded-lg px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
@@ -89,7 +121,7 @@ export function AdminPushForm() {
           style={{ backgroundColor: appConfig.themeColor }}
           type="submit"
         >
-          Enviar para todos
+          {isSending ? "Enviando..." : "Enviar para todos"}
         </button>
       </div>
 

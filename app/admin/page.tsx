@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminPushForm } from "@/components/admin-push-form";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { clearAdminSession, isAdminAuthenticated } from "@/lib/admin-auth";
 import { appConfig } from "@/lib/app-config";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
@@ -23,6 +23,7 @@ type CampaignRow = {
   status: string;
   recipient_count: number | null;
   created_at: string;
+  sent_at: string | null;
 };
 
 function formatDate(value: string | null) {
@@ -34,6 +35,13 @@ function formatDate(value: string | null) {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+async function logout() {
+  "use server";
+
+  await clearAdminSession();
+  redirect("/admin/login");
 }
 
 export default async function AdminPage() {
@@ -61,7 +69,7 @@ export default async function AdminPage() {
         .limit(10),
       supabase
         .from("push_campaigns")
-        .select("id, title, target_type, status, recipient_count, created_at")
+        .select("id, title, target_type, status, recipient_count, created_at, sent_at")
         .order("created_at", { ascending: false })
         .limit(10),
     ]);
@@ -88,9 +96,16 @@ export default async function AdminPage() {
             </p>
             <h1 className="text-2xl font-black tracking-normal">Painel Admin</h1>
           </div>
-          <Link className="text-sm font-bold text-slate-700" href="/">
-            Ver home
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link className="text-sm font-bold text-slate-700" href="/">
+              Ver home
+            </Link>
+            <form action={logout}>
+              <button className="text-sm font-bold text-slate-700" type="submit">
+                Sair
+              </button>
+            </form>
+          </div>
         </header>
 
         {configWarning ? (
@@ -122,11 +137,11 @@ export default async function AdminPage() {
                   className="grid gap-1 border-b border-slate-100 pb-3 text-sm last:border-0 last:pb-0"
                   key={item.id}
                 >
-                  <p className="font-semibold text-slate-900">
+                  <p className="break-all font-semibold text-slate-900">
                     {item.onesignal_id}
                   </p>
                   <p className="text-slate-500">
-                    {item.permission_status || "-"} · {item.device_type || "-"} ·{" "}
+                    {item.permission_status || "-"} | {item.device_type || "-"} |{" "}
                     {formatDate(item.last_seen_at || item.created_at)}
                   </p>
                 </div>
@@ -148,9 +163,9 @@ export default async function AdminPage() {
                 >
                   <p className="font-semibold text-slate-900">{item.title}</p>
                   <p className="text-slate-500">
-                    {item.status} · {item.target_type} ·{" "}
-                    {item.recipient_count || 0} destinatarios ·{" "}
-                    {formatDate(item.created_at)}
+                    {item.status} | {item.target_type} |{" "}
+                    {item.recipient_count || 0} destinatarios |{" "}
+                    {formatDate(item.sent_at || item.created_at)}
                   </p>
                 </div>
               ))

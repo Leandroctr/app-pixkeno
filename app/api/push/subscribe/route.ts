@@ -8,6 +8,16 @@ type SubscribePayload = {
   deviceType?: string;
 };
 
+const allowedPermissionStatus = new Set(["granted", "denied", "default", "unknown"]);
+
+function sanitizeText(value: unknown, maxLength: number) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().slice(0, maxLength);
+}
+
 export async function POST(request: Request) {
   const supabase = createSupabaseAdminClient();
 
@@ -29,21 +39,37 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!payload.onesignalId) {
+  const onesignalId = sanitizeText(payload.onesignalId, 256);
+  const permissionStatus = sanitizeText(payload.permissionStatus, 32) || "unknown";
+  const userAgent =
+    sanitizeText(payload.userAgent, 512) ||
+    sanitizeText(request.headers.get("user-agent"), 512) ||
+    null;
+  const deviceType = sanitizeText(payload.deviceType, 32) || "web";
+
+  if (!onesignalId) {
     return NextResponse.json(
       { ok: false, error: "onesignalId e obrigatorio." },
       { status: 400 },
     );
   }
 
+  if (!allowedPermissionStatus.has(permissionStatus)) {
+    return NextResponse.json(
+      { ok: false, error: "permissionStatus invalido." },
+      { status: 400 },
+    );
+  }
+
+  const now = new Date().toISOString();
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
-      onesignal_id: payload.onesignalId,
-      permission_status: payload.permissionStatus || "unknown",
-      user_agent: payload.userAgent || null,
-      device_type: payload.deviceType || "web",
-      last_seen_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      onesignal_id: onesignalId,
+      permission_status: permissionStatus,
+      user_agent: userAgent,
+      device_type: deviceType,
+      last_seen_at: now,
+      updated_at: now,
     },
     {
       onConflict: "onesignal_id",
@@ -57,5 +83,13 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    subscription: {
+      onesignalId,
+      permissionStatus,
+      deviceType,
+      lastSeenAt: now,
+    },
+  });
 }
