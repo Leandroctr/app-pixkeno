@@ -78,7 +78,13 @@ async function sendSubscription(oneSignal: OneSignalInstance, permissionStatus: 
   });
 
   if (!response.ok) {
-    debugLog("Falha ao salvar inscricao push.", await response.json().catch(() => null));
+    debugLog(
+      "Falha ao salvar inscricao push.",
+      await response.json().catch((error) => {
+        console.error("[OneSignal] Init error:", error);
+        return null;
+      }),
+    );
   }
 
   return response.ok;
@@ -114,16 +120,20 @@ export async function initializeOneSignal(): Promise<OneSignalInitResult> {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async (oneSignal) => {
         try {
+          debugLog("Antes de oneSignal.init.");
           await oneSignal.init({
             appId: appConfigClient.oneSignalAppId,
             serviceWorkerPath: "/sw.js",
           });
+          debugLog("Depois de oneSignal.init.");
           debugLog("SDK inicializado.");
+          debugLog("Notification.permission atual.", Notification.permission);
 
           const permissionGranted =
             oneSignal.Notifications.permission ||
             (await oneSignal.Notifications.requestPermission());
           const permissionStatus = permissionGranted ? "granted" : Notification.permission;
+          debugLog("Notification.permission apos request.", Notification.permission);
           debugLog("Status de permissao recebido.", permissionStatus);
 
           oneSignal.User.PushSubscription.addEventListener?.("change", (event) => {
@@ -141,7 +151,8 @@ export async function initializeOneSignal(): Promise<OneSignalInitResult> {
               ? "Inscricao push registrada."
               : "Permissao recebida, aguardando identificador do dispositivo.",
           });
-        } catch {
+        } catch (error) {
+          console.error("[OneSignal] Init error:", error);
           debugLog("Erro ao inicializar push.");
           resolve({
             enabled: true,
@@ -151,7 +162,8 @@ export async function initializeOneSignal(): Promise<OneSignalInitResult> {
         }
       });
     });
-  } catch {
+  } catch (error) {
+    console.error("[OneSignal] Init error:", error);
     debugLog("Erro ao carregar SDK.");
     return {
       enabled: true,
