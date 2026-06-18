@@ -12,6 +12,12 @@ export type AppConfig = {
   supabaseUrl: string;
   supabaseAnonKey: string;
   mode: string;
+  home: {
+    eyebrow: string;
+    primaryActionLabel: string;
+    supportActionLabel: string;
+    supportFloatingLabel: string;
+  };
 };
 
 function readEnv(name: string, fallback = "") {
@@ -35,6 +41,12 @@ export const appConfig: AppConfig = {
   supabaseUrl: readEnv("NEXT_PUBLIC_SUPABASE_URL"),
   supabaseAnonKey: readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   mode: readEnv("NEXT_PUBLIC_APP_MODE", process.env.NODE_ENV || "development"),
+  home: {
+    eyebrow: readEnv("NEXT_PUBLIC_HOME_EYEBROW", "PWA"),
+    primaryActionLabel: readEnv("NEXT_PUBLIC_HOME_PRIMARY_ACTION", "Acessar"),
+    supportActionLabel: readEnv("NEXT_PUBLIC_HOME_SUPPORT_ACTION", "Suporte"),
+    supportFloatingLabel: readEnv("NEXT_PUBLIC_HOME_FLOATING_SUPPORT", "?"),
+  },
 };
 
 export const appIconConfig = [

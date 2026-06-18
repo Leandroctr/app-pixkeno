@@ -36,7 +36,7 @@ export default function Home() {
             )}
             <div>
               <p className="text-sm font-medium text-slate-500">
-                {appConfig.shortName}
+                {appConfig.home.eyebrow}
               </p>
               <h1 className="text-xl font-bold tracking-normal">
                 {appConfig.name}
@@ -76,13 +76,13 @@ export default function Home() {
               href={appConfig.platformUrl}
               style={{ backgroundColor: "var(--app-primary)" }}
             >
-              Acessar
+              {appConfig.home.primaryActionLabel}
             </a>
             <a
               className="flex min-h-14 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-base font-bold text-slate-800 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-4 focus:ring-slate-200"
               href={appConfig.supportUrl}
             >
-              Suporte
+              {appConfig.home.supportActionLabel}
             </a>
           </div>
         </div>
@@ -93,7 +93,7 @@ export default function Home() {
           href={appConfig.supportUrl}
           style={{ backgroundColor: "var(--app-primary)" }}
         >
-          ?
+          {appConfig.home.supportFloatingLabel}
         </a>
       </section>
     </main>

@@ -1,11 +1,12 @@
 create extension if not exists "pgcrypto";
 
-create table if not exists public.push_devices (
+create table if not exists public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
-  external_id text unique,
-  subscription_id text unique,
+  onesignal_id text not null unique,
+  permission_status text not null default 'unknown',
   user_agent text,
-  platform text,
+  device_type text not null default 'web',
+  last_seen_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -17,22 +18,31 @@ create table if not exists public.push_campaigns (
   target_url text,
   target_type text not null default 'all',
   status text not null default 'draft',
+  onesignal_notification_id text,
+  recipient_count integer not null default 0,
+  error_message text,
   sent_at timestamptz,
   created_at timestamptz not null default now()
 );
 
-alter table public.push_devices enable row level security;
+alter table public.push_subscriptions enable row level security;
 alter table public.push_campaigns enable row level security;
 
-create policy "Allow anonymous device registration"
-  on public.push_devices
+create policy "Allow anonymous push subscription registration"
+  on public.push_subscriptions
   for insert
   to anon
   with check (true);
 
-create policy "Allow anonymous device updates by subscription"
-  on public.push_devices
+create policy "Allow anonymous push subscription updates"
+  on public.push_subscriptions
   for update
   to anon
-  using (subscription_id is not null)
-  with check (subscription_id is not null);
+  using (onesignal_id is not null)
+  with check (onesignal_id is not null);
+
+create index if not exists push_subscriptions_created_at_idx
+  on public.push_subscriptions (created_at desc);
+
+create index if not exists push_campaigns_created_at_idx
+  on public.push_campaigns (created_at desc);
