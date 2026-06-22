@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { NotificationButton } from "@/components/notification-button";
 import { appConfig } from "@/lib/app-config";
+import { appConfigClient } from "@/lib/app-config.client";
 
 const REDIRECT_DELAY_MS = 1500;
 
@@ -12,9 +13,19 @@ function isValidPlatformUrl(url: string) {
   return Boolean(url.trim()) && url.trim() !== "#";
 }
 
+type PlatformState = {
+  mounted: boolean;
+  isValid: boolean;
+  url: string;
+};
+
 export default function Home() {
-  const canRedirect = isValidPlatformUrl(appConfig.platformUrl);
-  const hasPlatformError = !canRedirect;
+  const [platformState, setPlatformState] = useState<PlatformState>({
+    mounted: false,
+    isValid: false,
+    url: "",
+  });
+  const hasPlatformError = platformState.mounted && !platformState.isValid;
   const appInitial = appConfig.shortName.trim().charAt(0).toUpperCase() || "A";
 
   const rootStyle = useMemo(
@@ -28,16 +39,30 @@ export default function Home() {
   );
 
   useEffect(() => {
-    if (!canRedirect) {
-      return;
+    const platformUrl = appConfigClient.platformUrl.trim();
+    const isValid = isValidPlatformUrl(platformUrl);
+
+    const validationTimer = window.setTimeout(() => {
+      setPlatformState({
+        mounted: true,
+        isValid,
+        url: platformUrl,
+      });
+    }, 0);
+
+    if (!isValid) {
+      return () => window.clearTimeout(validationTimer);
     }
 
-    const timer = window.setTimeout(() => {
-      window.location.assign(appConfig.platformUrl);
+    const redirectTimer = window.setTimeout(() => {
+      window.location.assign(platformUrl);
     }, REDIRECT_DELAY_MS);
 
-    return () => window.clearTimeout(timer);
-  }, [canRedirect]);
+    return () => {
+      window.clearTimeout(validationTimer);
+      window.clearTimeout(redirectTimer);
+    };
+  }, []);
 
   return (
     <main
@@ -87,9 +112,9 @@ export default function Home() {
 
         <div className="mt-8 flex flex-col items-center gap-4">
           <a
-            aria-disabled={!canRedirect}
+            aria-disabled={!platformState.isValid}
             className="rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-slate-900/15 transition hover:brightness-95 focus:outline-none focus:ring-4 focus:ring-slate-200 aria-disabled:pointer-events-none aria-disabled:opacity-60"
-            href={canRedirect ? appConfig.platformUrl : "#"}
+            href={platformState.isValid ? platformState.url : "#"}
             style={{ backgroundColor: "var(--app-primary)" }}
           >
             Abrir agora
@@ -97,7 +122,7 @@ export default function Home() {
 
           <a
             className="text-sm font-semibold text-slate-500 underline-offset-4 transition hover:text-slate-800 hover:underline focus:outline-none focus:ring-4 focus:ring-slate-200"
-            href={appConfig.supportUrl || "#"}
+            href={appConfigClient.supportUrl || "#"}
           >
             Suporte
           </a>
