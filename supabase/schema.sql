@@ -53,6 +53,9 @@ create table if not exists public.app_settings (
 alter table public.app_settings
   add column if not exists splash_image_url text;
 
+alter table public.app_settings
+  add column if not exists splash_html_url text;
+
 insert into public.app_settings (
   singleton_key,
   app_name,

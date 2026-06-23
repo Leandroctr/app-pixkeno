@@ -34,6 +34,7 @@ function getClientFallbackSettings(): AppSettings {
     splashTitle: appConfigClient.appName,
     splashMessage: "Carregando ambiente seguro...",
     splashImageUrl: appConfigClient.splashImageUrl,
+    splashHtmlUrl: "",
     redirectDelayMs: 1500,
     notificationsEnabled: false,
     oneSignalAppId: appConfigClient.oneSignalAppId,
@@ -119,6 +120,19 @@ export default function Home() {
     };
   }, []);
 
+  if (settings.splashHtmlUrl) {
+    console.log("[SPLASH] Renderizando splash HTML:", settings.splashHtmlUrl);
+    return (
+      <iframe
+        sandbox="allow-scripts allow-same-origin"
+        src={settings.splashHtmlUrl}
+        style={{ position: "fixed", inset: 0, width: "100%", height: "100%", border: 0 }}
+        title="Splash animada"
+      />
+    );
+  }
+
+  console.log("[SPLASH] Renderizando splash estatica");
   return (
     <main
       className="grid min-h-dvh place-items-center px-5 py-8 text-slate-950"
