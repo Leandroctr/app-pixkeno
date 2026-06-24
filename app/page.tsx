@@ -187,6 +187,30 @@ export default function Home() {
     );
   }
 
+  if (!platformState.mounted) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: settings.themeColor || "#000",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Image
+          alt=""
+          height={96}
+          priority
+          src={settings.icon192Url || "/icons/icon-192.svg"}
+          unoptimized
+          width={96}
+        />
+      </div>
+    );
+  }
+
   console.log("[SPLASH] Renderizando splash estatica");
   return (
     <main
