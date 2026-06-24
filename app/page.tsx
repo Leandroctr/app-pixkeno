@@ -15,17 +15,20 @@ function prepareHtml(html: string): string {
   const W = 1080;
   const H = 1920;
 
+  // Remove any existing viewport meta so ours is the only one
+  const cleaned = html.replace(/<meta[^>]+name=["']viewport["'][^>]*\/?>/gi, "");
+
   const inject = `<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 html{margin:0;padding:0;width:100vw;height:100vh;overflow:hidden;}
-body{margin:0;padding:0;width:${W}px;height:${H}px;overflow:hidden;transform-origin:top left;opacity:0;}
+body{margin:0;padding:0;width:${W}px;height:${H}px;overflow:hidden;transform-origin:0 0;opacity:0;}
 </style>
-<script>(function(){function s(){var f=Math.min(window.innerWidth/${W},window.innerHeight/${H});document.body.style.transform='scale('+f+')';document.body.style.opacity='1';}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',s);}else{s();}window.addEventListener('resize',s);})()</script>`;
+<script>(function(){function s(){var w=window.innerWidth,h=window.innerHeight,f=Math.max(w/${W},h/${H}),tx=(w-${W}*f)/2,ty=(h-${H}*f)/2;document.body.style.transform='translateX('+tx+'px) translateY('+ty+'px) scale('+f+')';document.body.style.opacity='1';}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',s);}else{s();}window.addEventListener('resize',s);})()</script>`;
 
-  if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head([^>]*)>/i, (_, attrs: string) => `<head${attrs}>\n${inject}`);
+  if (/<head[^>]*>/i.test(cleaned)) {
+    return cleaned.replace(/<head([^>]*)>/i, (_, attrs: string) => `<head${attrs}>\n${inject}`);
   }
-  return `<head>\n${inject}</head>\n${html}`;
+  return `<head>\n${inject}</head>\n${cleaned}`;
 }
 
 type PlatformState = {
