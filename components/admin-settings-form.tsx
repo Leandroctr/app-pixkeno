@@ -32,6 +32,7 @@ type AssetConfig = {
   buttonLabel: string;
   recommendation: string;
   ideal: string;
+  idealKb: number;
   maxKb: number;
   targetWidth?: number;
   targetHeight?: number;
@@ -51,6 +52,7 @@ const assetConfigs: AssetConfig[] = [
     buttonLabel: "Enviar logo",
     recommendation: "Formato recomendado: PNG transparente",
     ideal: "Tamanho ideal: 512x512 px",
+    idealKb: 200,
     maxKb: 500,
     targetWidth: 512,
     targetHeight: 512,
@@ -63,6 +65,7 @@ const assetConfigs: AssetConfig[] = [
     buttonLabel: "Enviar favicon",
     recommendation: "Formato recomendado: ICO ou PNG",
     ideal: "Tamanho ideal: 32x32 px",
+    idealKb: 50,
     maxKb: 100,
     targetWidth: 32,
     targetHeight: 32,
@@ -75,6 +78,7 @@ const assetConfigs: AssetConfig[] = [
     buttonLabel: "Enviar icone 192x192",
     recommendation: "Tamanho obrigatorio: 192x192 px",
     ideal: "Usado no manifest do PWA",
+    idealKb: 150,
     maxKb: 300,
     targetWidth: 192,
     targetHeight: 192,
@@ -88,6 +92,7 @@ const assetConfigs: AssetConfig[] = [
     buttonLabel: "Enviar icone 512x512",
     recommendation: "Tamanho obrigatorio: 512x512 px",
     ideal: "Usado para instalacao e icones maskable",
+    idealKb: 300,
     maxKb: 500,
     targetWidth: 512,
     targetHeight: 512,
@@ -101,6 +106,7 @@ const assetConfigs: AssetConfig[] = [
     buttonLabel: "Enviar imagem splash",
     recommendation: "Tamanho recomendado: 1080x1920 px",
     ideal: "Imagem vertical para a abertura do app",
+    idealKb: 512,
     maxKb: 1024,
     targetWidth: 1080,
     targetHeight: 1920,
@@ -155,31 +161,14 @@ function formatDimension(meta?: AssetMeta) {
   return `${meta.width}x${meta.height} px`;
 }
 
-function getQuality(config: AssetConfig, meta?: AssetMeta) {
-  if (!meta) {
-    return null;
+function getQuality(config: AssetConfig, sizeKb: number) {
+  if (sizeKb <= config.idealKb) {
+    return { label: "Excelente", pill: "border border-emerald-200 bg-emerald-50 text-emerald-700" };
   }
-
-  const sizeOk = meta.sizeKb <= config.maxKb;
-  const hasDimensions = Boolean(meta.width && meta.height);
-  const exact =
-    hasDimensions &&
-    meta.width === config.targetWidth &&
-    meta.height === config.targetHeight;
-  const ratioOk =
-    hasDimensions &&
-    config.aspectRatio &&
-    Math.abs(meta.width! / meta.height! - config.aspectRatio) < 0.04;
-
-  if (exact && sizeOk) {
-    return { label: "🟢 Excelente", className: "text-emerald-700" };
+  if (sizeKb <= config.maxKb) {
+    return { label: "Aceitavel", pill: "border border-amber-200 bg-amber-50 text-amber-700" };
   }
-
-  if ((ratioOk || !hasDimensions) && sizeOk) {
-    return { label: "🟡 Aceitavel", className: "text-amber-700" };
-  }
-
-  return { label: "🔴 Recomenda-se substituir", className: "text-red-700" };
+  return { label: "Inaceitavel", pill: "border border-red-200 bg-red-50 text-red-700" };
 }
 
 function readImageSize(file: File) {
@@ -555,7 +544,7 @@ export function AdminSettingsForm({ initialSettings }: AdminSettingsFormProps) {
             {assetConfigs.map((config) => {
               const url = settings[config.key];
               const meta = assetMeta[config.key];
-              const quality = getQuality(config, meta);
+              const quality = meta ? getQuality(config, meta.sizeKb) : null;
 
               return (
                 <section
@@ -565,14 +554,14 @@ export function AdminSettingsForm({ initialSettings }: AdminSettingsFormProps) {
                   <div>
                     <h3 className="text-base font-black">{config.title}</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-500">
-                      {config.recommendation}. {config.ideal}. Tamanho maximo:{" "}
-                      {config.maxKb} KB.
+                      {config.recommendation}. {config.ideal}. Ideal: até{" "}
+                      {config.idealKb} KB • Máximo: {config.maxKb} KB.
                     </p>
                   </div>
 
                   {url ? (
                     <div className="flex items-start gap-3">
-                      <div className="grid size-20 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                      <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                         <Image
                           alt={config.title}
                           className="max-h-20 max-w-20 object-contain"
@@ -585,16 +574,15 @@ export function AdminSettingsForm({ initialSettings }: AdminSettingsFormProps) {
                       <div className="min-w-0 text-sm text-slate-600">
                         {meta ? (
                           <>
-                            <p className="break-all font-semibold text-slate-900">
-                              Arquivo: {meta.fileName}
+                            <p className="truncate font-semibold text-slate-900">
+                              {meta.fileName}
                             </p>
-                            <p>Dimensoes: {formatDimension(meta)}</p>
-                            <p>Tamanho: {meta.sizeKb} KB</p>
-                            {quality ? (
-                              <p className={`font-bold ${quality.className}`}>
-                                {quality.label}
-                              </p>
-                            ) : null}
+                            <p className="mt-0.5">{meta.sizeKb} KB</p>
+                            <span
+                              className={`mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${quality!.pill}`}
+                            >
+                              {quality!.label}
+                            </span>
                             {meta.warning ? (
                               <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 font-medium text-amber-900">
                                 {meta.warning}
@@ -602,7 +590,9 @@ export function AdminSettingsForm({ initialSettings }: AdminSettingsFormProps) {
                             ) : null}
                           </>
                         ) : (
-                          <p className="break-all">URL configurada: {url}</p>
+                          <p className="font-semibold text-slate-900">
+                            Arquivo configurado
+                          </p>
                         )}
                       </div>
                     </div>
