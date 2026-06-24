@@ -99,11 +99,19 @@ export default function Home() {
       let loadedSettings = getClientFallbackSettings();
 
       try {
-        const response = await fetch("/api/settings", { cache: "no-store" });
-        const result = await response.json();
-
-        if (response.ok && result?.settings) {
-          loadedSettings = result.settings;
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 5000);
+        try {
+          const response = await fetch("/api/settings", {
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          const result = await response.json();
+          if (response.ok && result?.settings) {
+            loadedSettings = result.settings;
+          }
+        } finally {
+          window.clearTimeout(timeoutId);
         }
       } catch {
         loadedSettings = getClientFallbackSettings();
@@ -162,7 +170,7 @@ export default function Home() {
     console.log("[SPLASH] Renderizando splash HTML via srcDoc");
     return (
       <iframe
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts allow-same-origin allow-top-navigation"
         srcDoc={splashHtml}
         style={{ display: "block", position: "fixed", inset: 0, margin: 0, width: "100%", height: "100%", border: 0 }}
         title="Splash animada"
