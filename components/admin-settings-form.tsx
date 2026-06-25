@@ -666,7 +666,7 @@ export function AdminSettingsForm({ initialSettings }: AdminSettingsFormProps) {
                   {htmlSplashMeta ? (
                     <p>Tamanho: {htmlSplashMeta.sizeKb} KB</p>
                   ) : (
-                    <p className="break-all">URL: {settings.splashHtmlUrl}</p>
+                    <p>Arquivo configurado — {(() => { try { return new URL(settings.splashHtmlUrl).pathname.split("/").filter(Boolean).pop() ?? "splash.html"; } catch { return "splash.html"; } })()}</p>
                   )}
                   <p className="mt-1 font-semibold text-emerald-700">Ativa — tem prioridade sobre a imagem</p>
                 </div>
@@ -698,23 +698,13 @@ export function AdminSettingsForm({ initialSettings }: AdminSettingsFormProps) {
                       : "Enviar splash HTML"}
                 </button>
                 {settings.splashHtmlUrl ? (
-                  <>
-                    <a
-                      className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700"
-                      href={settings.splashHtmlUrl}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      Abrir preview
-                    </a>
-                    <button
-                      className="min-h-10 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700"
-                      onClick={removeHtmlSplash}
-                      type="button"
-                    >
-                      Remover
-                    </button>
-                  </>
+                  <button
+                    className="min-h-10 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700"
+                    onClick={removeHtmlSplash}
+                    type="button"
+                  >
+                    Remover
+                  </button>
                 ) : null}
               </div>
             </section>
