@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { OneSignalInitializer } from "@/components/onesignal-initializer";
@@ -56,6 +57,13 @@ export default async function RootLayout({
         />
       </head>
       <body>
+        <Script id="onesignal-deferred-setup" strategy="beforeInteractive">
+          {`window.OneSignalDeferred = window.OneSignalDeferred || [];`}
+        </Script>
+        <Script
+          src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+          strategy="afterInteractive"
+        />
         <ServiceWorkerRegister />
         <OneSignalInitializer />
         {children}

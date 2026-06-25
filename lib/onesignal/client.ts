@@ -40,24 +40,6 @@ function debugLog(message: string, details?: unknown) {
   }
 }
 
-function loadOneSignalSdk() {
-  return new Promise<void>((resolve, reject) => {
-    if (document.querySelector("[data-onesignal-sdk]")) {
-      resolve();
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.async = true;
-    script.defer = true;
-    script.dataset.onesignalSdk = "true";
-    script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Nao foi possivel carregar o OneSignal."));
-    document.head.appendChild(script);
-  });
-}
-
 async function sendSubscription(oneSignal: OneSignalInstance, permissionStatus: string) {
   const onesignalId = oneSignal.User.PushSubscription.id;
 
@@ -125,9 +107,6 @@ async function _initializeOneSignal(
   }
 
   try {
-    await loadOneSignalSdk();
-    debugLog("SDK carregado.");
-
     return await new Promise((resolve) => {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async (oneSignal) => {
@@ -175,11 +154,10 @@ async function _initializeOneSignal(
     });
   } catch (error) {
     console.error("[OneSignal] Init error:", error);
-    debugLog("Erro ao carregar SDK.");
     return {
       enabled: true,
       subscribed: false,
-      message: "Nao foi possivel carregar o push agora.",
+      message: "Nao foi possivel inicializar o push agora.",
     };
   }
 }
