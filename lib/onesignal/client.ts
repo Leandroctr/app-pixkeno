@@ -32,6 +32,8 @@ export type OneSignalInitResult = {
   message: string;
 };
 
+let initPromise: Promise<OneSignalInitResult> | null = null;
+
 function debugLog(message: string, details?: unknown) {
   if (process.env.NODE_ENV === "development") {
     console.info(`[OneSignal] ${message}`, details ?? "");
@@ -90,8 +92,16 @@ async function sendSubscription(oneSignal: OneSignalInstance, permissionStatus: 
   return response.ok;
 }
 
-export async function initializeOneSignal(
+export function initializeOneSignal(
   oneSignalAppId = appConfigClient.oneSignalAppId,
+): Promise<OneSignalInitResult> {
+  if (initPromise) return initPromise;
+  initPromise = _initializeOneSignal(oneSignalAppId);
+  return initPromise;
+}
+
+async function _initializeOneSignal(
+  oneSignalAppId: string,
 ): Promise<OneSignalInitResult> {
   debugLog("Config publica carregada.", {
     hasOneSignalAppId: Boolean(oneSignalAppId),
