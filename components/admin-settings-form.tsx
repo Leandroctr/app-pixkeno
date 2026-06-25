@@ -666,7 +666,7 @@ export function AdminSettingsForm({ initialSettings }: AdminSettingsFormProps) {
                   {htmlSplashMeta ? (
                     <p>Tamanho: {htmlSplashMeta.sizeKb} KB</p>
                   ) : (
-                    <p>Arquivo configurado — {(() => { try { return new URL(settings.splashHtmlUrl).pathname.split("/").filter(Boolean).pop() ?? "splash.html"; } catch { return "splash.html"; } })()}</p>
+                    <p>Arquivo configurado</p>
                   )}
                   <p className="mt-1 font-semibold text-emerald-700">Ativa — tem prioridade sobre a imagem</p>
                 </div>
