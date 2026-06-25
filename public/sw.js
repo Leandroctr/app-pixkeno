@@ -1,12 +1,6 @@
 const CACHE_NAME = "app-big-v1";
 const PRECACHE_URLS = ["/", "/manifest.webmanifest"];
 
-try {
-  importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
-} catch {
-  // Push should not prevent the PWA cache from installing.
-}
-
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)),

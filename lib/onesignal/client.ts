@@ -125,7 +125,6 @@ export async function initializeOneSignal(
           debugLog("Antes de oneSignal.init.");
           await oneSignal.init({
             appId: oneSignalAppId,
-            serviceWorkerPath: "/sw.js",
           });
           debugLog("Depois de oneSignal.init.");
           debugLog("SDK inicializado.");
