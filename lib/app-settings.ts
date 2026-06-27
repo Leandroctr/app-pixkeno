@@ -2,6 +2,7 @@ import { appConfig } from "@/lib/app-config";
 
 export type AppSettings = {
   id?: string;
+  tenantDomain?: string;
   appName: string;
   appShortName: string;
   appDescription: string;
@@ -26,6 +27,7 @@ export type AppSettings = {
 
 export type AppSettingsRow = {
   id?: string;
+  tenant_domain?: string | null;
   app_name?: string | null;
   app_short_name?: string | null;
   app_description?: string | null;
@@ -48,6 +50,14 @@ export type AppSettingsRow = {
   updated_at?: string | null;
 };
 
+export function extractHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 export const placeholderIcons = {
   icon192: "/icons/icon-192.svg",
   icon512: "/icons/icon-512.svg",
@@ -55,6 +65,7 @@ export const placeholderIcons = {
 
 export function getFallbackAppSettings(): AppSettings {
   return {
+    tenantDomain: extractHostname(appConfig.publicUrl),
     appName: appConfig.name,
     appShortName: appConfig.shortName,
     appDescription: appConfig.description,
@@ -101,6 +112,7 @@ export function settingsRowToAppSettings(
 
   return {
     id: row.id,
+    tenantDomain: row.tenant_domain || fallback.tenantDomain,
     appName: textOrFallback(row.app_name, fallback.appName),
     appShortName: textOrFallback(row.app_short_name, fallback.appShortName),
     appDescription: textOrFallback(row.app_description, fallback.appDescription),
@@ -135,6 +147,7 @@ export function settingsRowToAppSettings(
 
 export function appSettingsToRow(settings: Partial<AppSettings>) {
   return {
+    tenant_domain: settings.tenantDomain,
     app_name: settings.appName,
     app_short_name: settings.appShortName,
     app_description: settings.appDescription,

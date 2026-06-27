@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { appSettingsToRow, settingsRowToAppSettings } from "@/lib/app-settings";
+import { appSettingsToRow, extractHostname, settingsRowToAppSettings } from "@/lib/app-settings";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { appConfig } from "@/lib/app-config";
 
 type SettingsPayload = {
   id?: string;
+  tenantDomain?: string;
   appName?: string;
   appShortName?: string;
   appDescription?: string;
