@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { OneSignalInitializer } from "@/components/onesignal-initializer";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { getAppSettings } from "@/lib/app-settings.server";
 
 export async function generateMetadata(): Promise<Metadata> {
