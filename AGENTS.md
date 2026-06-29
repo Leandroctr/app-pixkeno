@@ -40,6 +40,60 @@ Nenhuma alteração estrutural pode ser feita sem aprovação.
 
 ---
 
+## Sincronização entre PWAs
+
+**Este repositório alimenta múltiplos projetos PWA em produção simultaneamente.**
+
+PWAs ativos:
+
+| Cliente | Domínio | Vercel | GitHub |
+|---|---|---|---|
+| BigPix | `pwa.app-bigpix.com` | `moline/app-big` | `Leandroctr/app-big` |
+| MegaBingo7 | `pwa.app-megabingo7.com` | `moline/app-megabingo7` | `Leandroctr/app-megabingo7` |
+
+### Distinção entre commit local e versão aprovada
+
+- Commits locais, experimentais ou em desenvolvimento **não precisam** ser implantados imediatamente em todos os PWAs.
+- Toda **versão aprovada para produção** deve ser implantada em todos os PWAs ativos sem exceção.
+- Uma entrega só é considerada **concluída** quando todos os PWAs ativos estiverem rodando a mesma versão aprovada.
+
+### Diferenças permitidas entre clientes
+
+As únicas diferenças aceitas entre projetos são configuradas via variáveis de ambiente ou banco de dados — nunca via código:
+
+- `tenant_domain`
+- `NEXT_PUBLIC_PUBLIC_URL`
+- Domínio (DNS e Vercel)
+- Imagens: logos, ícones, splash
+- Cores e tema
+- OneSignal App ID
+- Dados em `app_settings`
+- Variáveis de ambiente específicas do cliente
+
+### Diferenças não permitidas entre clientes
+
+É **proibido** que os PWAs em produção apresentem divergências em:
+
+- Código-fonte (lógica de upload, push, autenticação, rotas)
+- Service Worker — qualquer diferença exige aprovação explícita
+- Manifest — qualquer diferença exige aprovação explícita
+- Schema ou migrations aplicadas parcialmente — deve haver documentação registrando o estado de cada PWA
+
+### Verificação obrigatória antes de considerar uma versão concluída
+
+1. Listar todos os PWAs ativos (tabela acima).
+2. Confirmar o commit/build implantado em cada um.
+3. Confirmar que nenhum PWA ficou desatualizado.
+4. Se algum PWA não puder ser atualizado no momento, registrar a pendência explicitamente antes de encerrar a sessão.
+
+**Nunca assumir que um push em um repositório atualiza os demais.**
+
+### Regra futura planejada
+
+Criar endpoint de diagnóstico/versionamento (`/api/admin/version` ou similar) para exibir commit, build e tenant de cada PWA em tempo real — a ser implementado em etapa posterior com aprovação.
+
+---
+
 ## Fluxo obrigatório
 
 **Antes de implementar:**
@@ -55,6 +109,7 @@ Nenhuma alteração estrutural pode ser feita sem aprovação.
 3. Atualizar a documentação correspondente.
 4. Mostrar `git status --short`.
 5. Esperar aprovação antes de commit.
+6. Após o commit, verificar quais PWAs ainda não têm o commit e fazer push para todos.
 
 ---
 
@@ -69,8 +124,9 @@ Toda alteração técnica relevante deve atualizar a documentação corresponden
 | Arquitetura       | `docs/AUDIT_REPORT.md`         |
 | Planejamento      | `docs/FIRST_DELIVERY_PLAN.md`  |
 | Roadmap           | `docs/ROADMAP.md`              |
+| Novos PWAs        | `AGENTS.md` + `CLAUDE.md` (tabela de PWAs ativos) |
 
-Uma implementação não é considerada concluída enquanto a documentação não estiver atualizada.
+Uma implementação não é considerada concluída enquanto a documentação não estiver atualizada e todos os PWAs não estiverem no mesmo commit.
 
 ---
 
