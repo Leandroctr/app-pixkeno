@@ -14,5 +14,4 @@ pnpm-debug.log*
 
 *.tsbuildinfo
 .vercel
-
 AUDIT_SNAPSHOT.md
