@@ -233,7 +233,13 @@ export async function POST(request: Request) {
 
   // --- Upload ---
 
-  const uploadData: Buffer | File = uploadBuffer ?? file;
+  // Wrap the sharp-optimized Buffer in a Blob before uploading: passing a raw
+  // Node Buffer here got corrupted in transit (bytes round-tripped through a
+  // UTF-8 string somewhere between here and Supabase Storage). Blob is the
+  // binary-safe path already used for unoptimized File uploads.
+  const uploadData: Blob | File = uploadBuffer
+    ? new Blob([Uint8Array.from(uploadBuffer)], { type: uploadContentType })
+    : file;
 
   const { error } = await supabase.storage
     .from(bucketName)
