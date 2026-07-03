@@ -198,9 +198,17 @@ Apenas os arquivos abaixo devem ser tocados. Nenhum outro.
 
 Cada etapa é independente e pode ser revisada antes da próxima.
 
-### Etapa 0 — Resolver tenant_domain (BLOQUEANTE)
+### Etapa 0 — Resolver tenant_domain (BLOQUEANTE) — CONCLUÍDA em 2026-07-02
 
-**Prioridade:** esta etapa deve ser concluída e aprovada antes de qualquer outra.
+**Atualização 2026-07-02:** confirmado por leitura direta do banco compartilhado
+(somente leitura, via `service_role`) que esta etapa está concluída. A coluna
+`tenant_domain` existe e **os 4 tenants ativos** (Big Pix, MegaBingo7, Oba Prêmios,
+Prêmios ao Vivo — não só os 2 listados na tabela histórica abaixo) já têm linha
+própria em `app_settings`, corretamente isolada. Detalhes e evidência completa em
+`docs/TENANT_DOMAIN_AUDIT.md` §0. O texto abaixo é o plano original (2026-06-29),
+mantido como registro.
+
+**Prioridade (histórica):** esta etapa deveria ser concluída e aprovada antes de qualquer outra.
 
 **Problema:** o código usa `.eq("tenant_domain", hostname)` e `.upsert({ onConflict: "tenant_domain" })`, mas a coluna `tenant_domain` não existe em `supabase/schema.sql`. Resultado: settings sempre em fallback; painel admin não consegue salvar.
 
@@ -228,12 +236,12 @@ Cada etapa é independente e pode ser revisada antes da próxima.
 - Cria índice único em `tenant_domain` (compatível com `ON CONFLICT (tenant_domain)`).
 - Preserva `singleton_key` e todos os dados existentes.
 
-**Critérios de conclusão desta etapa:**
+**Critérios de conclusão desta etapa (atualizado em 2026-07-02):**
 
-- [ ] `supabase/migrations/002_add_tenant_domain_to_app_settings.sql` executado no banco
-- [ ] Linha existente atualizada com hostname correto
-- [ ] `GET /api/settings` retorna `source: database` (não `source: env`)
-- [ ] Painel admin consegue salvar configurações sem erro 500
+- [x] `supabase/migrations/002_add_tenant_domain_to_app_settings.sql` executado no banco
+- [x] Linhas existentes com `tenant_domain` correto (4 tenants, não só os 2 originais)
+- [ ] `GET /api/settings` retorna `source: database` — não reverificado ao vivo nesta etapa (confirmado indiretamente pelos dados do banco)
+- [x] Painel admin consegue salvar configurações sem erro 500 (evidenciado por `updated_at` recentes nas 4 linhas)
 
 **Rollback:** executar `supabase/migrations/002_add_tenant_domain_to_app_settings.rollback.sql`. Remove índice e coluna. O sistema volta ao estado de falha silenciosa anterior.
 

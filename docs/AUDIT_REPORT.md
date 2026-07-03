@@ -11,17 +11,24 @@
 
 ## 1. Resumo Executivo
 
-O projeto está em **transição arquitetural** com um bloqueio crítico em produção.
+**Atualização 2026-07-02:** o bloqueio crítico descrito abaixo foi resolvido. Leitura
+direta do banco compartilhado confirmou que a migration `002` já foi executada — a
+coluna `tenant_domain` existe e as 4 linhas de `app_settings` (Big Pix, MegaBingo7,
+Oba Prêmios, Prêmios ao Vivo) já estão isoladas corretamente por domínio. O texto
+original da auditoria (2026-06-28) é mantido abaixo como registro histórico do
+diagnóstico que levou à decisão arquitetural da seção 8.
 
-O código foi atualizado para operar como multi-tenant por domínio (`tenant_domain`), mas o banco de dados ainda não acompanhou. Isso cria um estado de falha silenciosa em produção.
+O projeto **operava** em transição arquitetural com um bloqueio crítico em produção.
 
-> **Modelo anterior:** White label por deploy individual — settings identificados por `singleton_key boolean unique`.
+O código foi atualizado para operar como multi-tenant por domínio (`tenant_domain`), mas o banco de dados ainda não acompanhava. Isso criava um estado de falha silenciosa em produção.
 
-> **Modelo atual (código):** Multi-tenant por domínio — settings identificados por `tenant_domain`.
+> **Modelo anterior:** White label por deploy individual — settings identificados por `singleton_key boolean unique` (coluna legada, mantida sem uso no código).
 
-> **Gap crítico:** a coluna `tenant_domain` não existe em `supabase/schema.sql`. Leitura sempre retorna fallback de env vars. Escrita falha com erro Postgres.
+> **Modelo atual (código e banco, confirmado em 2026-07-02):** Multi-tenant por domínio — settings identificados por `tenant_domain`, banco único compartilhado pelos 4 PWAs ativos.
 
-Para a auditoria completa da implementação e ações necessárias, ler: `docs/TENANT_DOMAIN_AUDIT.md`.
+> **Gap crítico (histórico, já resolvido):** a coluna `tenant_domain` não existia em `supabase/schema.sql` nem no banco. Leitura sempre retornava fallback de env vars. Escrita falhava com erro Postgres. **`supabase/schema.sql` ainda não foi atualizado para refletir a coluna** — pendência de baixo risco, não bloqueante, já que o banco de produção já tem a coluna aplicada via migration.
+
+Para a auditoria completa da implementação, status atual e ações necessárias, ler: `docs/TENANT_DOMAIN_AUDIT.md`.
 
 ---
 
@@ -51,19 +58,21 @@ Após o merge de 5 commits remotos, o código foi atualizado para:
 - salvar settings com `.upsert({ onConflict: "tenant_domain" })`;
 - derivar o hostname de `NEXT_PUBLIC_PUBLIC_URL` via `extractHostname()`.
 
-Porém, `supabase/schema.sql` **não foi atualizado**. A coluna `tenant_domain` não existe no banco.
+Porém, `supabase/schema.sql` (o arquivo de schema base do repositório) **não foi atualizado** — a coluna foi adicionada em produção somente pela execução direta da migration `002` no banco, confirmada em 2026-07-02.
 
-Consequência imediata:
+Consequência histórica (antes da migration rodar):
 
-- Todas as leituras retornam `0 rows` → sistema usa fallback de env vars.
-- O UPSERT falha com erro Postgres por falta de constraint UNIQUE.
-- O painel admin não consegue salvar configurações.
+- Todas as leituras retornavam `0 rows` → sistema usava fallback de env vars.
+- O UPSERT falhava com erro Postgres por falta de constraint UNIQUE.
+- O painel admin não conseguia salvar configurações.
+
+**Situação atual (2026-07-02):** a migration já foi executada. As 4 linhas de `app_settings` têm `tenant_domain` preenchido corretamente. O índice único (`app_settings_tenant_domain_key`) tem evidência indireta forte de existir (saves recentes do admin em produção, consistentes com `ON CONFLICT (tenant_domain)` funcionando), com confirmação formal via SQL Editor em andamento.
 
 Conclusão:
 
-> O bloqueio crítico atual é a migration de `tenant_domain`. Nada mais deve ser implementado antes disso.
+> O bloqueio crítico de `tenant_domain` está resolvido. Pendência remanescente, de baixo risco: atualizar `supabase/schema.sql` para refletir a coluna já aplicada em produção (evita que um novo `schema.sql` rodado do zero num projeto novo saia desalinhado do banco real).
 
-Ver auditoria completa: `docs/TENANT_DOMAIN_AUDIT.md`.
+Ver auditoria completa e status atualizado: `docs/TENANT_DOMAIN_AUDIT.md`.
 
 ---
 
@@ -271,10 +280,10 @@ Esses pontos são importantes, mas não devem vir antes da segurança operaciona
 
 Cada deploy Vercel compartilha o mesmo banco Supabase. O campo `tenant_domain` em `app_settings` isola as configurações por cliente, usando o hostname de `NEXT_PUBLIC_PUBLIC_URL` como chave.
 
-**Bloqueio atual:** a migration que cria a coluna e o índice único ainda não foi executada.
+**Status (atualizado em 2026-07-02):** a migration já foi executada. Coluna `tenant_domain` confirmada em produção, com as 4 linhas de `app_settings` (Big Pix, MegaBingo7, Oba Prêmios, Prêmios ao Vivo) devidamente isoladas. Índice único com forte evidência indireta de existir, confirmação formal via SQL Editor em andamento.
 
 **Arquivo de migration:** `supabase/migrations/002_add_tenant_domain_to_app_settings.sql`  
 **Detalhes completos:** `docs/TENANT_DOMAIN_AUDIT.md`
 
-Nenhuma outra implementação deve iniciar antes da conclusão da migration e validação em produção.
+Pendência remanescente (baixo risco, não bloqueante): atualizar `supabase/schema.sql` para incluir `tenant_domain`, alinhando o arquivo de schema versionado ao estado real do banco.
 

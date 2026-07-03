@@ -10,6 +10,46 @@
 
 ---
 
+## 0. Atualização de status — 2026-07-02
+
+Contexto: preparação do tenant **Pix Keno**, no mesmo banco compartilhado.
+
+Antes de tocar em qualquer schema, foi feita uma leitura direta e somente-leitura do
+banco (via `service_role`, sem escrita) para confirmar o estado real. Resultado:
+
+- **A migration `002_add_tenant_domain_to_app_settings.sql` já foi executada.** A
+  coluna `tenant_domain` existe em `app_settings` no banco de produção.
+- **O banco compartilhado hoje tem 4 linhas, não 2.** Além de Big Pix e MegaBingo7
+  (únicos tenants mencionados nas seções originais desta auditoria), **Oba Prêmios**
+  e **Prêmios ao Vivo** também compartilham este mesmo projeto Supabase, cada um com
+  seu próprio `tenant_domain` corretamente preenchido:
+
+  | app_name | tenant_domain | notifications_enabled |
+  |---|---|---|
+  | Big Pix | `pwa.app-bigpix.com` | true |
+  | MegaBingo7 | `pwa.app-megabingo7.com` | true |
+  | Oba Premios | `pwa.app-obapremios.com` | false |
+  | PREMIOS AO VIVO | `pwa.app-premiosaovivo.com` | false |
+
+- **Índice único (`app_settings_tenant_domain_key`):** não é possível confirmar via
+  API REST do Supabase (PostgREST não expõe `pg_indexes`/`pg_constraint`, e não há
+  acesso `psql`/conexão Postgres direta neste ambiente). Evidência indireta forte de
+  que existe: os 4 `tenant_domain` são distintos, não-nulos, com `updated_at`
+  recentes (até 2026-07-01) — consistente com saves reais do painel admin via
+  `UPSERT ... ON CONFLICT (tenant_domain)`, que exige o índice único para não
+  falhar. Confirmação formal pendente via SQL Editor (query fornecida ao operador).
+- **Backup lógico da tabela `app_settings`** (JSON completo, 4 linhas) foi salvo
+  fora de qualquer repositório git antes de qualquer nova alteração de schema.
+- **Nenhuma alteração de schema foi executada nesta etapa.** As seções 1 a 9 abaixo
+  são o registro histórico da auditoria original (2026-06-28/29) e permanecem como
+  estavam, exceto pelas notas de status adicionadas onde a conclusão mudou.
+- **Pendência remanescente (baixo risco):** `supabase/schema.sql` (arquivo
+  versionado) ainda não inclui `tenant_domain` — o banco real já tem a coluna, mas
+  o arquivo de schema do repositório ficou desalinhado. Alinhar é recomendado antes
+  de usar `schema.sql` para provisionar um projeto Supabase novo do zero.
+
+---
+
 ## 1. Contexto
 
 Em 2026-06-28, foi executado `git merge origin/main` trazendo 5 commits que implementaram a feature `tenant_domain` como mecanismo de identificação de settings por domínio.
@@ -148,7 +188,11 @@ export function extractHostname(url: string): string {
 
 ### P9. Diagnóstico geral: o sistema está funcional com a implementação atual?
 
-**Não. O sistema está em estado de falha silenciosa.**
+> **Atualização 2026-07-02: resolvido.** Ver §0 — a migration já foi executada, a
+> coluna existe e os 4 tenants já leem/gravam via `tenant_domain` normalmente. O
+> diagnóstico abaixo é o registro histórico do estado em 2026-06-28/29.
+
+**(Histórico) Não. O sistema estava em estado de falha silenciosa.**
 
 Diagrama do fluxo atual em produção:
 
@@ -244,7 +288,7 @@ where  tenant_domain is null
 
 **Nota técnica:** o índice não é parcial (`WITHOUT WHERE`). O Postgres permite múltiplas linhas com `tenant_domain = NULL` em índices únicos porque `NULL != NULL` por padrão. Um índice parcial (`WHERE IS NOT NULL`) não seria compatível com `ON CONFLICT (tenant_domain)` sem predicado no UPSERT.
 
-**Status:** migration criada, aguardando execução com aprovação e backup prévio.
+**Status (atualizado em 2026-07-02):** migration executada em produção — coluna e (com alta confiança) índice único já existem. Ver §0. Pendência remanescente: alinhar `supabase/schema.sql` (arquivo versionado) à coluna já presente no banco real.
 
 ---
 
@@ -358,18 +402,21 @@ Remove o índice e a coluna. O sistema volta ao estado anterior (falha silencios
 
 ## 7. Resumo executivo
 
-| Pergunta | Resposta |
-|---|---|
-| `tenant_domain` existe no schema? | **Não — migration planejada, pendente de execução** |
-| Constraint UNIQUE existe? | **Não — incluída na migration** |
-| Código lê por `tenant_domain`? | **Sim — 3 arquivos** |
-| Código escreve por `tenant_domain`? | **Sim — 1 arquivo (UPSERT quebrado até migration)** |
-| Padrão antigo (`singleton_key`) ainda existe no código? | **Não — apenas no schema (mantido como legado)** |
-| `.order("updated_at").limit(1)` ainda existe? | **Não — completamente removido** |
-| Documentação está atualizada? | **Sim — corrigida em 2026-06-28** |
-| Sistema funciona em produção hoje? | **Não — settings em fallback até migration** |
-| Painel admin consegue salvar? | **Não — UPSERT falha até migration** |
-| O que desbloqueia tudo? | **Executar `002_add_tenant_domain_to_app_settings.sql` com backup e aprovação** |
+> **Atualizado em 2026-07-02 — ver §0 para a evidência.** Tabela abaixo reflete o
+> estado histórico (2026-06-28/29); a coluna "Estado 2026-07-02" foi adicionada.
+
+| Pergunta | Resposta (histórico, 2026-06-28) | Estado 2026-07-02 |
+|---|---|---|
+| `tenant_domain` existe no schema (banco)? | Não — migration planejada, pendente de execução | **Sim — confirmado em produção** |
+| `tenant_domain` existe em `supabase/schema.sql` (arquivo)? | Não | **Ainda não — pendência de baixo risco** |
+| Constraint UNIQUE existe? | Não — incluída na migration | **Forte evidência de sim; confirmação formal via SQL Editor em andamento** |
+| Código lê por `tenant_domain`? | Sim — 3 arquivos | Sim (sem mudança) |
+| Código escreve por `tenant_domain`? | Sim — 1 arquivo (UPSERT quebrado até migration) | **Sim, e funcionando** |
+| Padrão antigo (`singleton_key`) ainda existe no código? | Não — apenas no schema (legado) | Sem mudança |
+| Documentação está atualizada? | Sim — corrigida em 2026-06-28 | **Corrigida novamente em 2026-07-02** |
+| Sistema funciona em produção hoje? | Não — settings em fallback até migration | **Sim — 4 tenants lendo/gravando do banco** |
+| Painel admin consegue salvar? | Não — UPSERT falha até migration | **Sim** |
+| O que falta? | Executar `002_add_tenant_domain_to_app_settings.sql` | Confirmar formalmente o índice único; alinhar `supabase/schema.sql` |
 
 ---
 
@@ -420,7 +467,13 @@ Remove índice e coluna. O sistema volta ao estado de falha silenciosa anterior.
 
 ### Próximo passo
 
-Executar `002_add_tenant_domain_to_app_settings.sql` no Supabase Studio (SQL Editor) após:
+> **Atualizado em 2026-07-02:** este passo já foi concluído — a migration está
+> executada em produção (ver §0). O texto abaixo é o plano original, mantido como
+> registro. Não há placeholder `SUBSTITUIR_PELO_DOMINIO_DO_CLIENTE` na versão final
+> da migration (ela lê `public_url` do próprio banco, ver §4.1 e o arquivo real em
+> `supabase/migrations/002_add_tenant_domain_to_app_settings.sql`).
+
+(Histórico) Executar `002_add_tenant_domain_to_app_settings.sql` no Supabase Studio (SQL Editor) após:
 1. Backup do banco.
 2. Preenchimento do placeholder `SUBSTITUIR_PELO_DOMINIO_DO_CLIENTE`.
 3. Aprovação do responsável técnico.

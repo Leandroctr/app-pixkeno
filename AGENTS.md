@@ -132,13 +132,13 @@ Uma implementação não é considerada concluída enquanto a documentação nã
 
 ## Arquitetura atual
 
-O projeto está em **transição arquitetural**.
+O projeto opera em **multi-tenant por domínio** — settings identificados por `tenant_domain`, em um banco Supabase **compartilhado pelos 4 PWAs ativos** (tabela acima).
 
-> **Antes:** White label por deploy individual — settings identificados por `singleton_key`.
+> **Antes:** White label por deploy individual — settings identificados por `singleton_key` (coluna legada, mantida no banco sem uso no código).
 
-> **Agora (código):** Multi-tenant por domínio — settings identificados por `tenant_domain`.
-
-> **Bloqueio crítico:** a coluna `tenant_domain` não existe em `supabase/schema.sql`. O código já usa `tenant_domain`, mas o banco não tem a coluna nem o índice único necessário. Resultado: settings sempre em fallback de env vars; painel admin não consegue salvar configurações.
+> **Agora:** confirmado em 2026-07-02, por leitura direta do banco compartilhado, que a migration `supabase/migrations/002_add_tenant_domain_to_app_settings.sql` já foi executada: a coluna `tenant_domain` existe e as 4 linhas de `app_settings` (Big Pix, MegaBingo7, Oba Prêmios, Prêmios ao Vivo) já têm valores distintos e corretos. O índice único (`app_settings_tenant_domain_key`, necessário para o `upsert` do painel admin funcionar) tem evidência indireta forte de existir, mas ainda aguarda confirmação formal via SQL Editor — ver status atualizado em `docs/TENANT_DOMAIN_AUDIT.md`.
+>
+> **Pendência de baixo risco (não bloqueante):** `supabase/schema.sql` ainda não foi atualizado para incluir `tenant_domain` — a coluna existe em produção só porque a migration rodou diretamente no banco. Alinhar o schema base é recomendado, mas não é urgente.
 
 Antes de qualquer desenvolvimento, ler: `docs/TENANT_DOMAIN_AUDIT.md`.
 
